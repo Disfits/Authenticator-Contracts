@@ -10,13 +10,16 @@ contract AccountNFT is ERC721URIStorage {
     uint256 private projectID;
     
     //Mapping TokenID to ProjectID
-    mapping(uint256=>uint256) TokenProject;
+    mapping(uint256=>uint256) private TokenProject;
     
     // Mapping user address to their Project ID Array
-    mapping(address=>uint256[]) UserProjects;
+    mapping(address=>uint256[]) private UserProjects;
     
     //Project Info Array
     Project[] private Projects;
+    
+    //Amount user has earned
+    mapping(address=>uint256) private retrievalAmount;
     
     address private _owner;
     
@@ -59,6 +62,7 @@ contract AccountNFT is ERC721URIStorage {
         _setTokenURI(tokenID, accountURI);
         TokenProject[tokenID] = ProjectId;
         Projects[ProjectId].amountSold += 1;
+        retrievalAmount[Projects[ProjectId].projectOwner] += msg.value;
         tokenID = tokenID + 1;
         emit SignUp(msg.sender,ProjectId);
     }
@@ -149,6 +153,12 @@ contract AccountNFT is ERC721URIStorage {
         require(projectExists(projectId),"Accounts : Project doesn't exist");
         require(Projects[projectId].paused != pause,"Accounts : Paused status is already same");
         Projects[projectId].paused = pause;
+    }
+    
+    function retrieveAmount() external{
+        require(retrievalAmount[msg.sender] != 0,"Accounts : User doesn't have any balance to retrieve");
+        payable(msg.sender).transfer(retrievalAmount[msg.sender]);
+        retrievalAmount[msg.sender] = 0;
     }
 
 }
