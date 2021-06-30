@@ -21,8 +21,6 @@ contract AccountNFT is ERC721URIStorage {
     //Amount user has earned
     mapping(address=>uint256) private retrievalAmount;
     
-    address private _owner;
-    
     struct Project{
         address projectOwner;
         uint256 projectID;
@@ -30,6 +28,7 @@ contract AccountNFT is ERC721URIStorage {
         bool paused;
         uint256 NFTAmount;  
         uint256 amountSold;
+        string URI;
     }
     
     event SignUp(address userAddress,uint256 projectId);
@@ -38,28 +37,22 @@ contract AccountNFT is ERC721URIStorage {
     constructor() ERC721("Authenticator Token","ATT") {
         tokenID = 1;
         projectID = 0;
-        _owner = msg.sender;
     }
     
-    modifier onlyOwner() {
-        require(_owner == msg.sender, "Accounts : Caller is not the owner");
-        _;
-    }
     
     modifier onlyProjectOwner(uint256 ProjectId){
         require(Projects[ProjectId].projectOwner == msg.sender,"Accounts : User is not project owner");
         _;
     }
     
-    
 
-    function signUp(string memory accountURI,uint256 ProjectId) external payable{
+    function signUp(uint256 ProjectId) external payable{
         require(projectExists(ProjectId),"Accounts : Project doesn't exist");
         require(Projects[ProjectId].amountSold < Projects[ProjectId].NFTAmount,"Accounts : NFT minting has reached limit set by owner");
         require(!Projects[ProjectId].paused,"Accounts : NFT minting paused by owner");
         require(msg.value == Projects[ProjectId].NFTPrice,"Accounts : Sent value not equal to set price");
         _safeMint(_msgSender(), tokenID);
-        _setTokenURI(tokenID, accountURI);
+        _setTokenURI(tokenID, Projects[ProjectId].URI);
         TokenProject[tokenID] = ProjectId;
         Projects[ProjectId].amountSold += 1;
         retrievalAmount[Projects[ProjectId].projectOwner] += msg.value;
@@ -115,7 +108,7 @@ contract AccountNFT is ERC721URIStorage {
     }
     
     //Create a new project
-    function createProject(uint256 price,bool paused,uint256 amount) external {
+    function createProject(uint256 price,bool paused,uint256 amount,string memory nftURI) external {
         Project memory newProject;
         newProject.projectOwner = msg.sender;
         newProject.projectID = projectID;
@@ -123,6 +116,7 @@ contract AccountNFT is ERC721URIStorage {
         newProject.paused = paused;
         newProject.NFTAmount = amount;
         newProject.amountSold = 0;
+        newProject.URI = nftURI;
         Projects.push(newProject);
     
         UserProjects[msg.sender].push(projectID);
@@ -157,8 +151,12 @@ contract AccountNFT is ERC721URIStorage {
     
     function retrieveAmount() external{
         require(retrievalAmount[msg.sender] != 0,"Accounts : User doesn't have any balance to retrieve");
-        payable(msg.sender).transfer(retrievalAmount[msg.sender]);
+        uint256 amount = retrievalAmount[msg.sender];
         retrievalAmount[msg.sender] = 0;
+        payable(msg.sender).transfer(amount);
     }
-
+    
+    function showAmount() external view returns(uint256){
+        return retrievalAmount[msg.sender];
+    }
 }
